@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily & Dynamic Bible Verse</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      color: #222;
+      text-align: center;
+      padding: 1em;
+      background-color: #1a2a3a;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: -1;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      opacity: 0;
+      transition: opacity 0.4s ease-in-out;
+    }
+
+    body.bg-loaded::after {
+      opacity: 1;
+    }
+
+    #verse-container {
+      max-width: 700px;
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      padding: 25px 35px;
+      border-radius: 15px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+      margin-bottom: 20px;
+      text-align: center;
+      z-index: 1;
+    }
+
+    #verse {
+      font-size: 1.5rem;
+      line-height: 1.6;
+      margin-bottom: 15px;
+      font-weight: 500;
+    }
+
+    #reference {
+      font-style: italic;
+      color: #444;
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div id="verse-container">
+    <div id="verse">Loading verse...</div>
+    <div id="reference"></div>
+  </div>
+
+  <!-- Kept as a fallback if the API is unreachable or blocked by CORS -->
+  <script src="verses.js"></script>
+  <script>
+    const VERSE_API_URL = "https://discoverybiblestudy.org/daily/api/";
+
+    const defaultScenery = ["nature", "mountains", "forest", "sunset", "sky", "hills"];
+
+    const themeKeywords = {
+      light: "sunlight",
+      dark: "stars",
+      afraid: "calm",
+      courageous: "mountain",
+      shepherd: "meadow",
+      refuge: "rock",
+      earth: "space",
+      heavens: "sky",
+      sea: "ocean",
+      water: "river",
+      young: "path",
+      heart: "sunrise"
+    };
+
+    function setContextualBackground(verseObject) {
+      let selectedTag = "";
+
+      if (verseObject.tags) {
+        const tagsArray = verseObject.tags.split(",");
+        selectedTag = tagsArray[Math.floor(Math.random() * tagsArray.length)].trim();
+      }
+
+      if (!selectedTag && verseObject.text) {
+        const lowerText = verseObject.text.toLowerCase();
+        for (const [key, value] of Object.entries(themeKeywords)) {
+          if (lowerText.includes(key)) {
+            selectedTag = value;
+            break;
+          }
+        }
+      }
+
+      if (!selectedTag) {
+        selectedTag = defaultScenery[Math.floor(Math.random() * defaultScenery.length)];
+      }
+
+      const cacheBuster = Date.now() + Math.floor(Math.random() * 1000);
+      const imageUrl = `https://picsum.photos/1200/800?${selectedTag}&blur=1&random=${cacheBuster}`;
+
+      document.body.classList.remove("bg-loaded");
+
+      const imgPreloader = new Image();
+      imgPreloader.src = imageUrl;
+
+      imgPreloader.onload = function () {
+        let bgStyle = document.getElementById("dynamic-bg-style");
+        if (!bgStyle) {
+          bgStyle = document.createElement("style");
+          bgStyle.id = "dynamic-bg-style";
+          document.head.appendChild(bgStyle);
+        }
+
+        bgStyle.innerHTML = `body::after { background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url('${imageUrl}'); }`;
+        document.body.classList.add("bg-loaded");
+      };
+    }
+
+    function getFallbackVerse() {
+      if (typeof VERSES !== "undefined" && Array.isArray(VERSES) && VERSES.length > 0) {
+        return VERSES[Math.floor(Math.random() * VERSES.length)];
+      }
+      return null;
+    }
+
+    async function fetchVerseFromApi() {
+      const response = await fetch(VERSE_API_URL, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Adjust field names if using a different API provider
+      const text = data.text || data.verse || data.data?.text;
+      const ref = data.ref || data.reference || data.data?.reference;
+
+      if (!text || !ref) {
+        throw new Error("Unexpected API response shape");
+      }
+
+      return { text, ref, tags: "" };
+    }
+
+    async function showVerseAndBackground() {
+      let verseObj = null;
+
+      try {
+        verseObj = await fetchVerseFromApi();
+      } catch (err) {
+        console.warn("API fetch failed, using local fallback:", err);
+        verseObj = getFallbackVerse();
+      }
+
+      if (!verseObj) {
+        document.getElementById("verse").innerText = "No verses available right now.";
+        return;
+      }
+
+      document.getElementById("verse").innerText = verseObj.text;
+      document.getElementById("reference").innerText = verseObj.ref;
+      setContextualBackground(verseObj);
+    }
+
+    window.onload = function () {
+      showVerseAndBackground();
+    };
+  </script>
+</body>
+</html>
