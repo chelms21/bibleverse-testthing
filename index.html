@@ -80,21 +80,111 @@
   <script>
     const VERSE_API_URL = "/api/daily-verse";
 
-    const defaultScenery = ["nature", "mountains", "forest", "sunset", "sky", "hills"];
+    // Curated high-resolution landscape images grouped by mood/theme
+    const themedImages = {
+      sunrise: [
+        "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1600&q=80",
+        "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&fit=crop&w=1600&q=80"
+      ],
+      sunlight: [
+        "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1600&q=80",
+        "https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=1600&q=80"
+      ],
+      stars: [
+        "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1600&q=80",
+        "https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?auto=format&fit=crop&w=1600&q=80"
+      ],
+      calm: [
+        "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1600&q=80",
+        "https://images.unsplash.com/photo-1439066615861-d1af74d74000?auto=format&fit=crop&w=1600&q=80"
+      ],
+      mountain: [
+        "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1600&q=80",
+        "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1600&q=80"
+      ],
+      meadow: [
+        "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1600&q=80",
+        "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=1600&q=80"
+      ],
+      rock: [
+        "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1600&q=80",
+        "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1600&q=80"
+      ],
+      sky: [
+        "https://images.unsplash.com/photo-1513002749550-c59d786b8e6c?auto=format&fit=crop&w=1600&q=80",
+        "https://images.unsplash.com/photo-1534088568595-a066f410bcda?auto=format&fit=crop&w=1600&q=80"
+      ],
+      ocean: [
+        "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80",
+        "https://images.unsplash.com/photo-1505118380757-91f5f5632de0?auto=format&fit=crop&w=1600&q=80"
+      ],
+      river: [
+        "https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?auto=format&fit=crop&w=1600&q=80",
+        "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1600&q=80"
+      ],
+      path: [
+        "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1600&q=80",
+        "https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=1600&q=80"
+      ]
+    };
+
+    const defaultThemes = ["sunrise", "mountain", "meadow", "sky", "calm", "river"];
 
     const themeKeywords = {
+      joy: "sunrise",
+      rejoice: "sunrise",
+      glad: "sunrise",
+      hope: "sunrise",
+      dawn: "sunrise",
+      heart: "sunrise",
+      love: "sunrise",
       light: "sunlight",
+      glory: "sunlight",
+      truth: "sunlight",
+      shine: "sunlight",
       dark: "stars",
+      darkness: "stars",
+      night: "stars",
+      stars: "stars",
+      peace: "calm",
+      rest: "calm",
+      still: "calm",
       afraid: "calm",
+      fear: "calm",
+      comfort: "calm",
+      courage: "mountain",
       courageous: "mountain",
+      strength: "mountain",
+      strong: "mountain",
+      faith: "mountain",
+      stand: "mountain",
       shepherd: "meadow",
+      green: "meadow",
+      grace: "meadow",
+      blessed: "meadow",
       refuge: "rock",
-      earth: "space",
+      rock: "rock",
+      fortress: "rock",
+      shield: "rock",
       heavens: "sky",
+      heaven: "sky",
+      sky: "sky",
+      earth: "sky",
       sea: "ocean",
+      seas: "ocean",
+      ocean: "ocean",
+      waves: "ocean",
+      storm: "ocean",
       water: "river",
+      waters: "river",
+      river: "river",
+      thirst: "river",
+      spirit: "river",
+      path: "path",
+      way: "path",
+      walk: "path",
       young: "path",
-      heart: "sunrise"
+      wisdom: "path"
     };
 
     function decodeHtmlEntities(str) {
@@ -105,29 +195,35 @@
     }
 
     function setContextualBackground(verseObject) {
-      let selectedTag = "";
+      let selectedTheme = "";
 
+      // 1. Check custom tags if using local fallback verses
       if (verseObject.tags) {
         const tagsArray = verseObject.tags.split(",");
-        selectedTag = tagsArray[Math.floor(Math.random() * tagsArray.length)].trim();
+        const candidate = tagsArray[Math.floor(Math.random() * tagsArray.length)].trim().toLowerCase();
+        if (themedImages[candidate]) {
+          selectedTheme = candidate;
+        }
       }
 
-      if (!selectedTag && verseObject.text) {
-        const lowerText = verseObject.text.toLowerCase();
-        for (const [key, value] of Object.entries(themeKeywords)) {
-          if (lowerText.includes(key)) {
-            selectedTag = value;
+      // 2. Match whole words in the verse text against themeKeywords
+      if (!selectedTheme && verseObject.text) {
+        for (const [word, theme] of Object.entries(themeKeywords)) {
+          const regex = new RegExp(`\\b${word}\\b`, "i");
+          if (regex.test(verseObject.text)) {
+            selectedTheme = theme;
             break;
           }
         }
       }
 
-      if (!selectedTag) {
-        selectedTag = defaultScenery[Math.floor(Math.random() * defaultScenery.length)];
+      // 3. Fallback to a random scenic theme
+      if (!selectedTheme) {
+        selectedTheme = defaultThemes[Math.floor(Math.random() * defaultThemes.length)];
       }
 
-      const cacheBuster = Date.now() + Math.floor(Math.random() * 1000);
-      const imageUrl = `https://picsum.photos/1200/800?${selectedTag}&blur=1&random=${cacheBuster}`;
+      const pool = themedImages[selectedTheme] || themedImages.sunrise;
+      const imageUrl = pool[Math.floor(Math.random() * pool.length)];
 
       document.body.classList.remove("bg-loaded");
 
@@ -162,7 +258,6 @@
 
       const data = await response.json();
 
-      // Adjust field names if using a different API provider
       const text = data.text || data.verse || data.data?.text;
       const ref = data.ref || data.reference || data.data?.reference;
 
