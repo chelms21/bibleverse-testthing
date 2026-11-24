@@ -97,6 +97,13 @@
       heart: "sunrise"
     };
 
+    function decodeHtmlEntities(str) {
+      if (!str) return "";
+      const textarea = document.createElement("textarea");
+      textarea.innerHTML = str;
+      return textarea.value;
+    }
+
     function setContextualBackground(verseObject) {
       let selectedTag = "";
 
@@ -181,9 +188,12 @@
         return;
       }
 
-      document.getElementById("verse").innerText = verseObj.text;
-      document.getElementById("reference").innerText = verseObj.ref;
-      setContextualBackground(verseObj);
+      const decodedText = decodeHtmlEntities(verseObj.text);
+      const decodedRef = decodeHtmlEntities(verseObj.ref);
+
+      document.getElementById("verse").innerText = decodedText;
+      document.getElementById("reference").innerText = decodedRef;
+      setContextualBackground({ ...verseObj, text: decodedText, ref: decodedRef });
     }
 
     window.onload = function () {
